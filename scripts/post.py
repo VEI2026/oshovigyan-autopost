@@ -131,6 +131,10 @@ def main():
     if not CFG.get("enabled") and not FORCE and not DRY:
         log("Autopost is paused (config.json enabled=false). Nothing to do.")
         return
+    start = CFG.get("start_date")
+    if start and not FORCE and not DRY and dt.date.today().isoformat() < start:
+        log(f"Daily posting starts on {start}. Nothing to do today.")
+        return
     state = json.load(open(STATE))
     n, left = next_post(state)
     if n is None:
