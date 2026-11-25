@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "oshovigyan-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state/posted.json state/token.enc state/token_meta.json 2>/dev/null || true
+          git add -A state/
           git diff --cached --quiet || (git commit -m "Record post $(date -u +%F)" && git push)
       - name: Warn when the queue runs low
         if: always()

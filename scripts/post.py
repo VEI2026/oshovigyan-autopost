@@ -88,7 +88,7 @@ def maybe_refresh(token):
         return
     meta = json.load(open(TOKEN_META)) if os.path.exists(TOKEN_META) else {}
     last = meta.get("refreshed_at")
-    if last and (dt.datetime.utcnow() - dt.datetime.fromisoformat(last)).days < 7:
+    if last and (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.datetime.fromisoformat(last)).days < 7:
         return
     try:
         r = call("GET", "https://graph.instagram.com/refresh_access_token",
@@ -101,7 +101,7 @@ def maybe_refresh(token):
         log("Could not encrypt refreshed token")
         return
     open(TOKEN_ENC, "w").write(enc + "\n")
-    json.dump({"refreshed_at": dt.datetime.utcnow().isoformat(timespec="seconds"),
+    json.dump({"refreshed_at": dt.datetime.now(dt.timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds"),
                "expires_in_days": round(r.get("expires_in", 0) / 86400)}, open(TOKEN_META, "w"), indent=1)
     log("Token refreshed, valid for another", round(r.get("expires_in", 0) / 86400), "days")
 
@@ -184,7 +184,7 @@ def main():
     except Exception:
         pass
     state["posted"].append({"no": n, "media_id": mid, "permalink": link,
-                            "posted_at": dt.datetime.utcnow().isoformat(timespec="seconds") + "Z"})
+                            "posted_at": dt.datetime.now(dt.timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds") + "Z"})
     json.dump(state, open(STATE, "w"), indent=1)
     log(f"PUBLISHED post {n:03d}: {link or mid}")
     if left - 1 < 3:
