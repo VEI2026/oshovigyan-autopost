@@ -1,0 +1,52 @@
+name: Daily Instagram post
+
+on:
+  schedule:
+    # 13:45 UTC = 7:15 PM IST. GitHub usually starts scheduled runs 5-20 min late,
+    # so posts land around 7:30 PM IST.
+    - cron: "45 13 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "test = build everything but don't publish; publish = post the next one now"
+        type: choice
+        options: [test, publish]
+        default: test
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: instagram-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish next carousel
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          TOKEN_KEY: ${{ secrets.TOKEN_KEY }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'test' && '1' || '0' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'publish' && '1' || '0' }}
+        run: python3 scripts/post.py
+      - name: Save state
+        if: always()
+        run: |
+          git config user.name "oshovigyan-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/posted.json state/token.enc state/token_meta.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Record post $(date -u +%F)" && git push)
+      - name: Warn when the queue runs low
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f state/QUEUE_LOW ] || [ -f state/QUEUE_EMPTY ]; then
+            gh issue create --title "Instagram queue is running low" \
+              --body "Only $(cat state/QUEUE_LOW 2>/dev/null || echo 0) posts are left in the queue. Ask Claude to build the next batch." || true
+          fi
